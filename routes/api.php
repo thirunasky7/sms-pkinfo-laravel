@@ -53,7 +53,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['api.key', 'api.key.throttle', 'subscription'])->group(function () {
-        Route::post('messages/send', [MessageController::class, 'send']);
+        Route::post('messages/send', [MessageController::class, 'send'])->middleware('api.scope:messages:send');
     });
 
     // Meta calls this endpoint directly: no API key, authenticated by verify token / signature.

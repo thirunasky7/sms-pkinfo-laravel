@@ -41,6 +41,9 @@ Route::middleware(['auth', 'role:customer_admin,sub_admin'])->prefix('customer')
     Route::post('/bulk', [CustomerAdminController::class, 'bulkUpload'])->name('bulk');
     Route::get('/api', [CustomerAdminController::class, 'apiIntegration'])->name('api');
     Route::post('/api/keys', [CustomerAdminController::class, 'createApiKey'])->name('api.keys');
+    Route::post('/api/keys/{apiKey}/secret', [CustomerAdminController::class, 'showApiSecret'])->middleware('throttle:30,1')->name('api.keys.secret');
+    Route::post('/api/keys/{apiKey}/regenerate', [CustomerAdminController::class, 'regenerateApiSecret'])->name('api.keys.regenerate');
+    Route::delete('/api/keys/{apiKey}', [CustomerAdminController::class, 'revokeApiKey'])->name('api.keys.revoke');
     Route::post('/api/webhooks', [CustomerAdminController::class, 'storeWebhook'])->name('api.webhooks');
     Route::get('/tickets', [CustomerAdminController::class, 'tickets'])->name('tickets');
     Route::post('/tickets', [CustomerAdminController::class, 'storeTicket'])->name('tickets.store');

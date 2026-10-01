@@ -9,6 +9,7 @@ use App\Models\DevicePairingToken;
 use App\Models\Message;
 use App\Models\SupportTicket;
 use App\Models\Webhook;
+use App\Support\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -199,20 +200,80 @@ class CustomerAdminController extends Controller
         return view('admin.customer.api', compact('keys', 'webhooks'));
     }
 
+    public const API_KEY_ACCESS = [
+        'full' => null,
+        'sms' => ['messages:send', 'messages:read'],
+        'whatsapp' => ['whatsapp:send', 'whatsapp:read', 'whatsapp:templates'],
+    ];
+
     public function createApiKey(Request $request)
     {
-        $secret = Str::random(40);
-        $key = 'smk_'.Str::random(24);
-
-        ApiKey::create([
-            'user_id' => $this->accountId(),
-            'name' => $request->input('name', 'Default'),
-            'key' => $key,
-            'secret_hash' => Hash::make($secret),
-            'rate_limit' => 60,
+        $data = $request->validate([
+            'name' => 'nullable|string|max:100',
+            'access' => 'nullable|in:'.implode(',', array_keys(self::API_KEY_ACCESS)),
         ]);
 
-        return back()->with('success', "API key created. Key: {$key} Secret: {$secret} (copy now)");
+        $secret = Str::random(40);
+        $apiKey = ApiKey::create([
+            'user_id' => $this->accountId(),
+            'name' => $data['name'] ?? 'Default',
+            'key' => 'smk_'.Str::random(24),
+            'secret_hash' => Hash::make($secret),
+            'secret_encrypted' => $secret,
+            'rate_limit' => 60,
+            'scopes' => self::API_KEY_ACCESS[$data['access'] ?? 'full'],
+        ]);
+
+        Audit::log((int) Auth::id(), 'api_key.created', $apiKey, ['name' => $apiKey->name]);
+
+        return back()
+            ->with('success', 'API key created.')
+            ->with('new_api_credentials', ['name' => $apiKey->name, 'key' => $apiKey->key, 'secret' => $secret]);
+    }
+
+    public function regenerateApiSecret(ApiKey $apiKey)
+    {
+        abort_unless((int) $apiKey->user_id === $this->accountId() && $apiKey->isActive(), 403);
+
+        $secret = Str::random(40);
+        $apiKey->update(['secret_hash' => Hash::make($secret), 'secret_encrypted' => $secret]);
+
+        Audit::log((int) Auth::id(), 'api_key.secret_regenerated', $apiKey, ['name' => $apiKey->name]);
+
+        return back()
+            ->with('success', 'New secret generated. The old secret stopped working immediately.')
+            ->with('new_api_credentials', ['name' => $apiKey->name, 'key' => $apiKey->key, 'secret' => $secret]);
+    }
+
+    public function showApiSecret(ApiKey $apiKey)
+    {
+        abort_unless((int) $apiKey->user_id === $this->accountId(), 403);
+
+        if (! $apiKey->isActive() || ! $apiKey->hasViewableSecret()) {
+            return response()->json([
+                'message' => $apiKey->isActive()
+                    ? 'This key was created before secrets could be viewed. Regenerate the secret to see it.'
+                    : 'This key is revoked.',
+            ], 404);
+        }
+
+        Audit::log((int) Auth::id(), 'api_key.secret_viewed', $apiKey, ['name' => $apiKey->name]);
+
+        return response()
+            ->json(['key' => $apiKey->key, 'secret' => $apiKey->secret_encrypted])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    public function revokeApiKey(ApiKey $apiKey)
+    {
+        abort_unless((int) $apiKey->user_id === $this->accountId(), 403);
+
+        if ($apiKey->isActive()) {
+            $apiKey->update(['revoked_at' => now(), 'secret_encrypted' => null]);
+            Audit::log((int) Auth::id(), 'api_key.revoked', $apiKey, ['name' => $apiKey->name]);
+        }
+
+        return back()->with('success', 'API key revoked.');
     }
 
     public function storeWebhook(Request $request)

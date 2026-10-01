@@ -12,6 +12,7 @@ class ApiKey extends Model
         'name',
         'key',
         'secret_hash',
+        'secret_encrypted',
         'rate_limit',
         'scopes',
         'last_used_at',
@@ -20,13 +21,20 @@ class ApiKey extends Model
 
     protected $casts = [
         'scopes' => 'array',
+        'secret_encrypted' => 'encrypted',
         'last_used_at' => 'datetime',
         'revoked_at' => 'datetime',
     ];
 
     protected $hidden = [
         'secret_hash',
+        'secret_encrypted',
     ];
+
+    public function hasViewableSecret(): bool
+    {
+        return $this->getRawOriginal('secret_encrypted') !== null;
+    }
 
     public function user(): BelongsTo
     {

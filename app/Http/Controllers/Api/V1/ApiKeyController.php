@@ -28,6 +28,7 @@ class ApiKeyController extends Controller
             'name' => $data['name'] ?? 'Default',
             'key' => $key,
             'secret_hash' => Hash::make($secret),
+            'secret_encrypted' => $secret,
             'rate_limit' => $data['rate_limit'] ?? 60,
             'scopes' => $data['scopes'] ?? ['messages:send', 'messages:read'],
         ]);
@@ -35,7 +36,7 @@ class ApiKeyController extends Controller
         return response()->json([
             'api_key' => $apiKey,
             'secret' => $secret,
-            'warning' => 'Store the secret now; it will not be shown again.',
+            'warning' => 'Keep the secret private. It can also be viewed later in the dashboard (API & Webhooks).',
         ], 201);
     }
 

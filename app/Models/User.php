@@ -74,6 +74,16 @@ class User extends Authenticatable
         return $this->hasMany(Message::class);
     }
 
+    public function whatsappAccounts(): HasMany
+    {
+        return $this->hasMany(WhatsAppAccount::class);
+    }
+
+    public function whatsappMessages(): HasMany
+    {
+        return $this->hasMany(WhatsAppMessage::class);
+    }
+
     public function pairingTokens(): HasMany
     {
         return $this->hasMany(DevicePairingToken::class);

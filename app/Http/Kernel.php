@@ -69,5 +69,8 @@ class Kernel extends HttpKernel
         'api.key' => \App\Http\Middleware\AuthenticateApiKey::class,
         'api.key.throttle' => \App\Http\Middleware\ThrottleApiKey::class,
         'subscription' => \App\Http\Middleware\EnforceSubscriptionLimit::class,
+        'api.scope' => \App\Http\Middleware\RequireApiKeyScope::class,
+        'whatsapp.subscription' => \App\Http\Middleware\EnforceWhatsAppSubscription::class,
+        'https' => \App\Http\Middleware\RequireHttps::class,
     ];
 }

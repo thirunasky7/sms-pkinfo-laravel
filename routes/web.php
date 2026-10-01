@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\CustomerAdminController;
 use App\Http\Controllers\Web\SuperAdminController;
+use App\Http\Controllers\Web\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -43,4 +44,32 @@ Route::middleware(['auth', 'role:customer_admin,sub_admin'])->prefix('customer')
     Route::post('/api/webhooks', [CustomerAdminController::class, 'storeWebhook'])->name('api.webhooks');
     Route::get('/tickets', [CustomerAdminController::class, 'tickets'])->name('tickets');
     Route::post('/tickets', [CustomerAdminController::class, 'storeTicket'])->name('tickets.store');
+
+    Route::prefix('whatsapp')->name('whatsapp.')->controller(WhatsAppController::class)->group(function () {
+        Route::get('/', 'overview')->name('overview');
+        Route::get('/connection', 'connection')->name('connection');
+        Route::post('/cloud/embedded-signup', 'embeddedSignup')->middleware('throttle:10,1')->name('cloud.embedded');
+        Route::post('/cloud/manual', 'manualConnect')->middleware('throttle:10,1')->name('cloud.manual');
+        Route::post('/accounts/{account}/default', 'setDefault')->name('accounts.default');
+        Route::delete('/accounts/{account}', 'revoke')->name('accounts.revoke');
+        Route::get('/messages', 'messages')->name('messages');
+        Route::post('/messages', 'send')->name('messages.send');
+        Route::post('/messages/{message}/retry', 'retry')->name('messages.retry');
+        Route::get('/incoming', 'incoming')->name('incoming');
+        Route::get('/templates', 'templates')->name('templates');
+        Route::post('/templates', 'storeTemplate')->name('templates.store');
+        Route::post('/templates/sync', 'syncTemplates')->name('templates.sync');
+        Route::get('/templates/{template}/edit', 'editTemplate')->name('templates.edit');
+        Route::put('/templates/{template}', 'updateTemplate')->name('templates.update');
+        Route::delete('/templates/{template}', 'destroyTemplate')->name('templates.destroy');
+        Route::get('/rules', 'rules')->name('rules');
+        Route::post('/rules', 'storeRule')->name('rules.store');
+        Route::patch('/rules/{rule}/toggle', 'toggleRule')->name('rules.toggle');
+        Route::delete('/rules/{rule}', 'destroyRule')->name('rules.destroy');
+        Route::delete('/opt-outs/{optOut}', 'removeOptOut')->name('optouts.destroy');
+        Route::get('/webhooks', 'webhooks')->name('webhooks');
+        Route::post('/webhooks', 'storeWebhook')->name('webhooks.store');
+        Route::delete('/webhooks/{webhook}', 'destroyWebhook')->name('webhooks.destroy');
+        Route::get('/docs', 'docs')->name('docs');
+    });
 });

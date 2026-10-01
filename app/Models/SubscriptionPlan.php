@@ -10,6 +10,7 @@ class SubscriptionPlan extends Model
     protected $fillable = [
         'name',
         'sms_limit',
+        'whatsapp_limit',
         'price',
         'currency',
         'duration_days',

@@ -23,7 +23,8 @@ class WebhookController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'event_type' => 'required|string|in:message.sent,message.delivered,message.failed,message.incoming',
+            'event_type' => 'required|string|in:message.sent,message.delivered,message.failed,message.incoming,'
+                .implode(',', config('whatsapp.webhook_events')),
             'url' => 'required|url|max:2048',
         ]);
 

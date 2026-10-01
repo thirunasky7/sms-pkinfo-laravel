@@ -16,6 +16,8 @@ class ApiKeyController extends Controller
         $data = $request->validate([
             'name' => 'nullable|string|max:255',
             'rate_limit' => 'nullable|integer|min:1|max:10000',
+            'scopes' => 'nullable|array',
+            'scopes.*' => 'string|in:*,messages:send,messages:read,'.implode(',', config('whatsapp.api_scopes')),
         ]);
 
         $secret = Str::random(40);
@@ -27,7 +29,7 @@ class ApiKeyController extends Controller
             'key' => $key,
             'secret_hash' => Hash::make($secret),
             'rate_limit' => $data['rate_limit'] ?? 60,
-            'scopes' => ['messages:send', 'messages:read'],
+            'scopes' => $data['scopes'] ?? ['messages:send', 'messages:read'],
         ]);
 
         return response()->json([

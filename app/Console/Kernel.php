@@ -13,6 +13,10 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('sms:dispatch-scheduled')->everyMinute();
+        $schedule->command('whatsapp:dispatch-due')->everyMinute()->withoutOverlapping();
+        $schedule->command('whatsapp:monitor-devices')->everyMinute()->withoutOverlapping();
+        $schedule->command('whatsapp:refresh-tokens')->daily();
+        $schedule->command('whatsapp:sync-templates')->hourly()->withoutOverlapping();
     }
 
     /**

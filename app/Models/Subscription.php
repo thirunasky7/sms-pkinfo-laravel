@@ -14,6 +14,7 @@ class Subscription extends Model
         'expires_at',
         'status',
         'sms_used',
+        'whatsapp_used',
         'grace_ends_at',
         'provider',
         'provider_subscription_id',
@@ -50,5 +51,29 @@ class Subscription extends Model
         }
 
         return $this->sms_used < $this->plan->sms_limit;
+    }
+
+    public function isCurrentlyActive(): bool
+    {
+        if (! in_array($this->status, ['active', 'grace'], true)) {
+            return false;
+        }
+
+        if ($this->status === 'grace' && $this->grace_ends_at && $this->grace_ends_at->isPast()) {
+            return false;
+        }
+
+        return ! ($this->expires_at->isPast() && $this->status === 'active');
+    }
+
+    public function allowsWhatsApp(): bool
+    {
+        if (! $this->isCurrentlyActive()) {
+            return false;
+        }
+
+        $limit = $this->plan->whatsapp_limit;
+
+        return $limit === null || $this->whatsapp_used < $limit;
     }
 }

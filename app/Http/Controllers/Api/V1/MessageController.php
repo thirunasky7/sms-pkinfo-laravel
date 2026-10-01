@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\SmsMessageReceived;
 use App\Http\Controllers\Controller;
 use App\Jobs\DispatchWebhookJob;
 use App\Jobs\PushOutgoingSmsToDeviceJob;
 use App\Models\Device;
 use App\Models\Message;
+use App\Services\Sms\SmsGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,43 +27,13 @@ class MessageController extends Controller
         $user = $request->user();
         $accountId = method_exists($user, 'ownsAccountId') ? $user->ownsAccountId() : $user->id;
 
-        $deviceQuery = Device::query()
-            ->where('user_id', $accountId)
-            ->whereNotIn('status', ['disabled', 'paused']);
+        $result = app(SmsGateway::class)->queue($accountId, $data, $request->attributes->get('subscription'));
 
-        if (! empty($data['device_id'])) {
-            $device = (clone $deviceQuery)->where('id', $data['device_id'])->first();
-        } else {
-            $device = (clone $deviceQuery)
-                ->orderByDesc('last_sync_at')
-                ->first();
+        if (! $result['message']) {
+            return response()->json(['message' => $result['error']], 422);
         }
 
-        if (! $device) {
-            return response()->json(['message' => 'No available device'], 422);
-        }
-
-        $message = Message::create([
-            'user_id' => $accountId,
-            'device_id' => $device->id,
-            'direction' => 'outgoing',
-            'sender' => $device->sim_number,
-            'recipient' => $data['to'],
-            'body' => $data['body'],
-            'status' => 'queued',
-            'external_id' => $data['external_id'] ?? null,
-            'queued_at' => now(),
-            'scheduled_at' => $data['scheduled_at'] ?? null,
-        ]);
-
-        $subscription = $request->attributes->get('subscription');
-        if ($subscription) {
-            $subscription->increment('sms_used');
-        }
-
-        if (empty($data['scheduled_at']) || now()->gte($data['scheduled_at'])) {
-            PushOutgoingSmsToDeviceJob::dispatch($message);
-        }
+        $message = $result['message'];
 
         return response()->json([
             'message' => $message->fresh(),
@@ -157,6 +129,8 @@ class MessageController extends Controller
             'event' => 'message.incoming',
             'message' => $message->toArray(),
         ]);
+
+        event(new SmsMessageReceived($message));
 
         return response()->json(['message' => $message], 201);
     }

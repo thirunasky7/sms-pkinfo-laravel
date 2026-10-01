@@ -37,4 +37,25 @@ class ApiKey extends Model
     {
         return $this->revoked_at === null;
     }
+
+    /**
+     * Keys created before scopes existed (null/empty scopes) keep full access.
+     * Keys with explicit scopes must list the scope, a prefix wildcard, or "*".
+     */
+    public function hasScope(string $scope): bool
+    {
+        $scopes = $this->scopes;
+
+        if (empty($scopes)) {
+            return true;
+        }
+
+        if (in_array('*', $scopes, true) || in_array($scope, $scopes, true)) {
+            return true;
+        }
+
+        $prefix = explode(':', $scope)[0];
+
+        return in_array($prefix.':*', $scopes, true);
+    }
 }
